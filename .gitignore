@@ -1,0 +1,20 @@
+# Local secrets
+backend/db-credentials.properties
+
+# Build output
+backend/target/
+frontend/node_modules/
+frontend/dist/
+backend/src/main/resources/static/
+
+# Editor / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs & env files
+*.log
+.env
+.env.*
