@@ -170,3 +170,39 @@ export const XIcon = (p) => (
     <path d="M18 6 6 18M6 6l12 12" />
   </Svg>
 );
+
+export const UploadIcon = (p) => (
+  <Svg {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M17 8l-5-5-5 5M12 3v12" />
+  </Svg>
+);
+
+export const ArrowRightIcon = (p) => (
+  <Svg {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Svg>
+);
+
+export const PlusTableIcon = (p) => (
+  <Svg {...p}>
+    <path d="M21 12V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
+    <path d="M3 9h18M9 3v18M18 15v6M15 18h6" />
+  </Svg>
+);
+
+export const ReplaceIcon = (p) => (
+  <Svg {...p}>
+    <path d="M3 12a9 9 0 0 1 15.36-6.36L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-15.36 6.36L3 16" />
+    <path d="M3 21v-5h5" />
+  </Svg>
+);
+
+export const RowsPlusIcon = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="18" height="12" rx="2" />
+    <path d="M3 9h18M12 18v4M10 20h4" />
+  </Svg>
+);

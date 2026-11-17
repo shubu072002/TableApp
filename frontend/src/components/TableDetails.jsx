@@ -10,6 +10,7 @@ import {
   AlertIcon,
   InfoIcon,
   XIcon,
+  UploadIcon,
 } from '../icons.jsx';
 
 const NOTICE_ICONS = { success: CheckIcon, error: AlertIcon, info: InfoIcon };
@@ -23,6 +24,7 @@ export default function TableDetails({
   onDismiss,
   onDownload,
   onCancel,
+  onUpload,
   formatBytes,
 }) {
   if (!table) {
@@ -83,6 +85,18 @@ export default function TableDetails({
           disabled={!!download}
           onClick={() => onDownload('xlsx')}
         />
+        <button className="dl-option dl-upload" onClick={onUpload} disabled={!!download}>
+          <span className="dl-icon">
+            <UploadIcon size={22} />
+          </span>
+          <span className="dl-text">
+            <span className="dl-title">Upload data</span>
+            <span className="dl-hint">Add or replace rows from a CSV / Excel file</span>
+          </span>
+          <span className="dl-arrow">
+            <UploadIcon size={18} />
+          </span>
+        </button>
       </div>
 
       {download && (
@@ -143,7 +157,7 @@ export default function TableDetails({
                   <td>
                     <span className="type-chip">{c.type}</span>
                   </td>
-                  <td className="muted">{c.size}</td>
+                  <td className="muted">{c.size > 0 && c.size < 2147483647 ? c.size : '—'}</td>
                   <td>
                     <span className={`null-chip ${c.nullable ? 'yes' : 'no'}`}>
                       {c.nullable ? 'NULL' : 'NOT NULL'}

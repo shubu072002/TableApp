@@ -111,3 +111,53 @@ export async function downloadTable(id, table, format, onProgress, signal) {
   setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
   return received;
 }
+
+// ------------------------------------------------------------------ upload / import
+
+const importsUrl = (id) => `${BASE}/${encodeURIComponent(id)}/imports`;
+
+/**
+ * Uploads a CSV / Excel file and returns the preview
+ * { uploadId, fileName, totalRows, columns[], sampleRows[][], suggestedTableName }.
+ * onProgress(fraction 0..1) reports the upload; returns { promise, abort }.
+ */
+export function uploadFile(id, file, onProgress) {
+  const xhr = new XMLHttpRequest();
+  const promise = new Promise((resolve, reject) => {
+    xhr.open('POST', importsUrl(id));
+    xhr.responseType = 'json';
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onload = () => {
+      const body = xhr.response;
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(body);
+      if (body?.code === 'SESSION_EXPIRED') return reject(new SessionExpiredError(body.message));
+      reject(new Error(body?.message || `Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('Upload failed – is the backend running?'));
+    xhr.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { name: 'AbortError' }));
+    const form = new FormData();
+    form.append('file', file);
+    xhr.send(form);
+  });
+  return { promise, abort: () => xhr.abort() };
+}
+
+/** Loads the uploaded file into a table. Returns { table, rowsInserted, rowsDeleted, created, millis }. */
+export async function importUpload(id, uploadId, request) {
+  const res = await fetch(`${importsUrl(id)}/${encodeURIComponent(uploadId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) throw await failure(res);
+  return res.json();
+}
+
+/** Throws away an uploaded file that will not be imported. */
+export async function discardUpload(id, uploadId) {
+  try {
+    await fetch(`${importsUrl(id)}/${encodeURIComponent(uploadId)}`, { method: 'DELETE' });
+  } catch {
+    /* ignore – the server deletes it after 30 minutes anyway */
+  }
+}

@@ -78,8 +78,6 @@ public class ConnectionRegistry {
         cfg.setInitializationFailTimeout(1); // test the connection right now, fail fast
         if (type == DbType.ORACLE) {
             cfg.addDataSourceProperty("oracle.net.CONNECT_TIMEOUT", "10000");
-        } else {
-            cfg.setReadOnly(true); // extra safety: this app only reads
         }
 
         HikariDataSource ds;
@@ -133,9 +131,10 @@ public class ConnectionRegistry {
     static String buildUrl(DbType type, String host, int port, String database, boolean oracleSid) {
         return switch (type) {
             case POSTGRES -> "jdbc:postgresql://" + host + ":" + port + "/" + database
-                    + "?connectTimeout=10&ApplicationName=TableExport";
+                    + "?connectTimeout=10&ApplicationName=TableExport&reWriteBatchedInserts=true";
             case MYSQL -> "jdbc:mysql://" + host + ":" + port + "/" + database
-                    + "?useCursorFetch=true&connectTimeout=10000&allowPublicKeyRetrieval=true";
+                    + "?useCursorFetch=true&connectTimeout=10000&allowPublicKeyRetrieval=true"
+                    + "&rewriteBatchedStatements=true";
             case ORACLE -> oracleSid
                     ? "jdbc:oracle:thin:@" + host + ":" + port + ":" + database
                     : "jdbc:oracle:thin:@//" + host + ":" + port + "/" + database;

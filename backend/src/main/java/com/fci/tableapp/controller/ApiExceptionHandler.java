@@ -2,6 +2,8 @@ package com.fci.tableapp.controller;
 
 import com.fci.tableapp.service.ConnectionFailedException;
 import com.fci.tableapp.service.DbException;
+import com.fci.tableapp.service.ImportException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.fci.tableapp.service.SessionNotFoundException;
 import com.fci.tableapp.service.TableNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,17 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DbException.class)
     public ResponseEntity<Map<String, String>> database(DbException e) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    /** Upload could not be imported (bad value, mapping, rejected rows) */
+    @ExceptionHandler(ImportException.class)
+    public ResponseEntity<Map<String, String>> importFailed(ImportException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> tooLarge(MaxUploadSizeExceededException e) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "The file is too large (limit 200 MB).");
     }
 
     /** Wrong host / password / database etc. while connecting */

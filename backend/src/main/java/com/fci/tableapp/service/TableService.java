@@ -110,6 +110,9 @@ public class TableService {
         s.begin();
         try (Connection c = s.dataSource().getConnection()) {
             String sql = "SELECT * FROM " + qualifiedName(c.getMetaData(), table);
+            if (s.type() != DbType.ORACLE) {
+                c.setReadOnly(true); // downloads never write (the pool resets this afterwards)
+            }
             boolean autoCommit = c.getAutoCommit();
             // PostgreSQL only streams with a cursor (fetchSize) when auto-commit is off
             c.setAutoCommit(false);
@@ -145,26 +148,27 @@ public class TableService {
     }
 
     /** "HR"."EMPLOYEES" (Oracle), "public"."tasks" (PostgreSQL), `shop`.`orders` (MySQL). */
-    private String qualifiedName(DatabaseMetaData md, TableInfo t) throws SQLException {
-        String q = md.getIdentifierQuoteString();
-        q = (q == null || q.isBlank()) ? "" : q.trim();
+    static String qualifiedName(DatabaseMetaData md, TableInfo t) throws SQLException {
         String prefix = !isBlank(t.schema()) ? t.schema() : t.catalog();
-        String name = quote(q, t.name());
-        return isBlank(prefix) ? name : quote(q, prefix) + "." + name;
+        String name = quote(md, t.name());
+        return isBlank(prefix) ? name : quote(md, prefix) + "." + name;
     }
 
-    private static String quote(String q, String identifier) {
+    /** Quotes one identifier with the database's quote character, e.g. "name" or `name`. */
+    static String quote(DatabaseMetaData md, String identifier) throws SQLException {
+        String q = md.getIdentifierQuoteString();
+        q = (q == null || q.isBlank()) ? "" : q.trim();
         if (q.isEmpty()) {
             return identifier;
         }
         return q + identifier.replace(q, q + q) + q;
     }
 
-    private record Scope(String catalog, String schema) {
+    record Scope(String catalog, String schema) {
     }
 
     /** Where to look for tables. MySQL calls a database a "catalog" and has no schemas. */
-    private Scope scope(DbSession s, Connection c) throws SQLException {
+    Scope scope(DbSession s, Connection c) throws SQLException {
         String wanted = s.schema();
         return switch (s.type()) {
             case MYSQL -> new Scope(isBlank(wanted) ? c.getCatalog() : wanted, null);

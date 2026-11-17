@@ -51,6 +51,27 @@ Notes:
 - Sessions close automatically after 30 idle minutes (`app.session.idle-minutes`).
 - Use **Disconnect** in the header to close a session.
 
+## Upload data (import)
+
+Click **Upload** above the table list, or **Upload data** on a selected table. Then drop or
+choose a **.csv / .txt / .tsv / .xlsx / .xls** file (max 200 MB). The first row must contain
+the column names.
+
+| Option | What happens |
+|---|---|
+| **Add rows** | Appends the file's rows to an existing table. File columns are matched to table columns by name, and you can change each match. |
+| **Replace data** | Deletes all existing rows, then inserts the file's rows. You must tick a confirmation box first. |
+| **New table** | Creates a table from the file. Column names and types are suggested and you can edit them. |
+
+How the data is handled:
+
+- **Delimiter and encoding:** the CSV delimiter (`,` `;` tab `|`) and encoding (UTF-8 or Windows-1252) are detected automatically.
+- **Column types:** detected from the data. Values with leading zeros (`00123`) stay text.
+- **Date formats:** `2026-05-31`, `2026/05/31`, `31-05-2026` and `31/05/2026`, optionally with a time.
+- **Empty cells:** stored as NULL.
+- **Excel files:** typed cells (numbers, dates, booleans) keep their types. A file exported by this app can be uploaded again, including large exports that were split over several sheets.
+- **All-or-nothing:** everything runs in one transaction. If any row fails, nothing is kept, a table created for the import is dropped again, and the error names the row and column.
+
 ## REST API
 
 | Method | URL | Purpose |
@@ -61,6 +82,9 @@ Notes:
 | GET | `/api/connections/{id}/tables` | list tables |
 | GET | `/api/connections/{id}/tables/details?schema=&table=` | columns + row count |
 | GET | `/api/connections/{id}/tables/download?schema=&table=&format=csv\|xlsx` | file download |
+| POST | `/api/connections/{id}/imports` (multipart `file`) | upload a file, returns a preview with column types |
+| POST | `/api/connections/{id}/imports/{uploadId}` | body `{mode: append\|replace\|create, schema, table, mappings[], columns[]}` |
+| DELETE | `/api/connections/{id}/imports/{uploadId}` | discard an uploaded file |
 
 ## Security
 
@@ -68,7 +92,9 @@ Notes:
   port, database name), so driver options cannot be injected.
 - Passwords live only inside the in-memory connection pool. They are never logged or written
   to disk.
-- PostgreSQL and MySQL sessions are opened **read-only**.
+- Downloads run on read-only connections (PostgreSQL / MySQL). Uploads need a database user
+  with INSERT rights (and CREATE TABLE rights for "New table", DELETE rights for "Replace").
+- Uploaded files are kept in a private temp folder only until they are imported, and for at most 30 minutes.
 - Table names are checked against the real table list and quoted before any query runs.
 - The connection id works like a login token for that session. Run the app on a trusted
   network only, because it lets the user connect to any host the server can reach.

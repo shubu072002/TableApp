@@ -1,4 +1,4 @@
-import { SearchIcon, RefreshIcon, TableIcon, AlertIcon } from '../icons.jsx';
+import { SearchIcon, RefreshIcon, TableIcon, AlertIcon, UploadIcon } from '../icons.jsx';
 
 export default function TableList({
   tables,
@@ -8,6 +8,7 @@ export default function TableList({
   filter,
   onFilter,
   onRefresh,
+  onUpload,
   selectedKey,
   keyOf,
   onSelect,
@@ -20,15 +21,26 @@ export default function TableList({
           <h2>Tables</h2>
           {!loading && !error && <span className="badge">{total}</span>}
         </div>
-        <button
-          className="icon-btn"
-          onClick={onRefresh}
-          disabled={loading || disabled}
-          title="Refresh table list"
-          aria-label="Refresh table list"
-        >
-          <RefreshIcon size={16} className={loading ? 'spin' : ''} />
-        </button>
+        <div className="head-actions">
+          <button
+            className="upload-btn"
+            onClick={onUpload}
+            disabled={loading || disabled || !!error}
+            title="Upload a CSV / Excel file into a new or existing table"
+          >
+            <UploadIcon size={15} />
+            Upload
+          </button>
+          <button
+            className="icon-btn"
+            onClick={onRefresh}
+            disabled={loading || disabled}
+            title="Refresh table list"
+            aria-label="Refresh table list"
+          >
+            <RefreshIcon size={16} className={loading ? 'spin' : ''} />
+          </button>
+        </div>
       </div>
 
       <label className="search">

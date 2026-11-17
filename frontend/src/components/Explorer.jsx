@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchTables, fetchDetails, downloadTable, SessionExpiredError } from '../api.js';
 import TableList from './TableList.jsx';
 import TableDetails from './TableDetails.jsx';
+import ImportDialog from './ImportDialog.jsx';
 
 const keyOf = (t) => `${t.schema ?? t.catalog ?? ''}.${t.name}`;
 
@@ -20,17 +21,30 @@ export default function Explorer({ connectionId, onSessionExpired }) {
   const [message, setMessage] = useState(null);
   const abortRef = useRef(null);
 
+  // Upload dialog: undefined = closed, null = no preselected table, object = upload into that table
+  const [importFor, setImportFor] = useState(undefined);
+  const [detailsVersion, setDetailsVersion] = useState(0); // bump to reload details after an import
+  const lastImport = useRef(null);
+
   const handleError = (e, setter) => {
     if (e instanceof SessionExpiredError) onSessionExpired(e.message);
     else setter(e.message);
   };
 
-  const loadTables = () => {
+  const loadTables = (selectAfter) => {
     setLoadingTables(true);
     setError(null);
     fetchTables(connectionId)
       .then((list) => {
         setTables(list);
+        if (selectAfter) {
+          const hit = list.find(
+            (t) => t.name === selectAfter.name && (t.schema ?? t.catalog) === (selectAfter.schema ?? selectAfter.catalog)
+          ) || list.find((t) => t.name.toLowerCase() === selectAfter.name.toLowerCase());
+          if (hit) setSelected(hit);
+          setDetailsVersion((v) => v + 1);
+          return;
+        }
         // ?table=NAME pre-selects a table (bookmarkable link)
         const wanted = new URLSearchParams(window.location.search).get('table');
         const match = wanted && list.find((t) => t.name.toLowerCase() === wanted.toLowerCase());
@@ -40,13 +54,12 @@ export default function Explorer({ connectionId, onSessionExpired }) {
       .finally(() => setLoadingTables(false));
   };
 
-  useEffect(loadTables, [connectionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => loadTables(), [connectionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
     setDetails(null);
-    setMessage(null);
     setLoadingDetails(true);
     fetchDetails(connectionId, selected)
       .then((d) => !cancelled && setDetails(d))
@@ -55,7 +68,7 @@ export default function Explorer({ connectionId, onSessionExpired }) {
     return () => {
       cancelled = true;
     };
-  }, [selected, connectionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, connectionId, detailsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleTables = useMemo(() => {
     const f = filter.trim().toLowerCase();
@@ -101,10 +114,15 @@ export default function Explorer({ connectionId, onSessionExpired }) {
         error={error}
         filter={filter}
         onFilter={setFilter}
-        onRefresh={loadTables}
+        onRefresh={() => loadTables()}
+        onUpload={() => setImportFor(null)}
         selectedKey={selected ? keyOf(selected) : null}
         keyOf={keyOf}
-        onSelect={(t) => !download && setSelected(t)}
+        onSelect={(t) => {
+          if (download) return;
+          setMessage(null);
+          setSelected(t);
+        }}
         disabled={!!download}
       />
 
@@ -117,8 +135,33 @@ export default function Explorer({ connectionId, onSessionExpired }) {
         onDismiss={() => setMessage(null)}
         onDownload={startDownload}
         onCancel={() => abortRef.current?.abort()}
+        onUpload={() => setImportFor(selected)}
         formatBytes={formatBytes}
       />
+
+      {importFor !== undefined && (
+        <ImportDialog
+          connectionId={connectionId}
+          tables={tables}
+          initialTable={importFor}
+          onSessionExpired={onSessionExpired}
+          onImported={(r) => {
+            lastImport.current = r;
+          }}
+          onClose={() => {
+            setImportFor(undefined);
+            const r = lastImport.current;
+            lastImport.current = null;
+            if (r) {
+              loadTables(r.table);
+              setMessage({
+                type: 'success',
+                text: `${r.rowsInserted.toLocaleString()} rows imported into ${r.table.name}.`,
+              });
+            }
+          }}
+        />
+      )}
     </main>
   );
 }
